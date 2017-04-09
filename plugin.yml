@@ -1,0 +1,11 @@
+main: ru.flametaichou.ExPrivileges
+name: ExPrivileges
+version: 0.1
+author: flametaichou
+description:
+
+commands:
+   ep:
+      description: Основная команда плагина
+      permission: exprivileges.*
+      usage: /ep add|remove|reload|version|help
