@@ -22,7 +22,8 @@ public class ExPrivileges extends JavaPlugin {
 	
 	Logger log = getLogger(); 
 	String prefix = "[ExPrivileges] ";
-	String version = "0.3";
+	String logPrefix = "[LOG] ";
+	String version = "0.4";
 	File filePlayers = new File(this.getDataFolder(), "players.yml");
 	FileConfiguration confPlayers = YamlConfiguration.loadConfiguration(filePlayers);
 	
@@ -81,8 +82,7 @@ public class ExPrivileges extends JavaPlugin {
             		
                 }
             }
-            //864000L
-        }, 0L, 500L);
+        }, 0L, 864000L);
         
 		//PluginManager pm = this.getServer().getPluginManager();
 		
@@ -127,9 +127,11 @@ public class ExPrivileges extends JavaPlugin {
 						confPlayers.load(filePlayers);
 					} catch (IOException | InvalidConfigurationException e) {
 						sender.sendMessage(this.prefix + "Ошибка при перезагрузке плагина.");
+						log.info(this.logPrefix + "Ошибка при перезагрузке плагина.");
 						return false;
 					}
 						sender.sendMessage(this.prefix + "Плагин перезагружен.");
+						log.info(this.logPrefix + "Плагин перезагружен.");
 						return true;
 					case "version":
 						sender.sendMessage(this.prefix + "Версия плагина: "+this.version);
@@ -178,6 +180,7 @@ public class ExPrivileges extends JavaPlugin {
 		if (checkCommandAdd(playerName, privilegeName, timeStr) == 1) {
 			
 			sender.sendMessage(this.prefix + "Игрок " + playerName + " был добавлен в группу " + privilegeName + " на " +timeStr+ " дней!");
+			log.info(this.logPrefix + "Игрок " + playerName + " был добавлен в группу " + privilegeName + " на " +timeStr+ " дней!");
             //int time = Integer.parseInt(timeStr);
     		getServer().dispatchCommand(getServer().getConsoleSender(), "pex user "+playerName+" group add "+privilegeName);
     		
@@ -199,6 +202,7 @@ public class ExPrivileges extends JavaPlugin {
     		} catch (IOException e) {
     			//e.printStackTrace();
     			sender.sendMessage(this.prefix + "Ошибка при сохранении данных о пользователе в файл!");
+    			log.info(this.logPrefix + "Ошибка при сохранении данных о пользователе в файл!");
     		}
     		
 
@@ -206,6 +210,7 @@ public class ExPrivileges extends JavaPlugin {
 			} else {
 			
 			sender.sendMessage(this.prefix + "Ошибка во вводе команды!");
+			log.info(this.logPrefix + "Ошибка во вводе команды!");
 			  
           }
 	}
@@ -213,12 +218,14 @@ public class ExPrivileges extends JavaPlugin {
 	public void removePlayer(String playerName, String privilegeName, CommandSender sender) {
 
 			sender.sendMessage(this.prefix + "Дата снятия привилегии "+privilegeName+" c игрока " + playerName + " была удалена из списков плагина. Права сняты не были!");
+			log.info(this.logPrefix + "Дата снятия привилегии "+privilegeName+" c игрока " + playerName + " была удалена из списков плагина. Права сняты не были!");
 			confPlayers.set(playerName+"."+privilegeName, "");
 			try {
     			confPlayers.save(filePlayers);
     		} catch (IOException e) {
     			//e.printStackTrace();
-    			log.info("Ошибка при сохранении данных о пользователе в файл!");
+    			sender.sendMessage(this.prefix + "Ошибка при сохранении данных о пользователе в файл!");
+    			log.info(this.logPrefix + "Ошибка при сохранении данных о пользователе в файл!");
     		}
 	}
 	
