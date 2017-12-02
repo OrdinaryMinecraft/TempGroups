@@ -18,19 +18,42 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitScheduler;
 
-public class ExPrivileges extends JavaPlugin {
+public class TempGroups extends JavaPlugin {
 	
 	Logger log = getLogger(); 
-	String prefix = "[ExPrivileges] ";
+	String prefix = "[TempGroups] ";
 	String logPrefix = "[LOG] ";
-	String version = "0.4";
+	String version = "0.5";
+	int confMinutes;
+	String confPlugin;
+	String confDefaultGroup;
 	File filePlayers = new File(this.getDataFolder(), "players.yml");
+	protected FileConfiguration config;
 	FileConfiguration confPlayers = YamlConfiguration.loadConfiguration(filePlayers);
+	
+	public void loadConfiguration(){
+		
+	    this.getConfig().addDefault("period", 720);
+	    this.getConfig().addDefault("plugin", "pex");
+	    this.getConfig().addDefault("gm-default-group", "default");
+	    this.getConfig().options().copyDefaults(true); 
+	    this.saveConfig();
+	}
+	
+	public void reloadCfg(){
+		
+		this.reloadConfig();
+		confMinutes = this.getConfig().getInt("period");
+		confPlugin = this.getConfig().getString("plugin");
+		confDefaultGroup = this.getConfig().getString("gm-default-group");
+	}
 	
 	
 	public void onEnable(){ 
 		
 		log.info("ON");
+		loadConfiguration();
+		reloadCfg();
 		
 		BukkitScheduler scheduler = getServer().getScheduler();
         scheduler.scheduleSyncRepeatingTask(this, new Runnable() {
@@ -39,23 +62,35 @@ public class ExPrivileges extends JavaPlugin {
                 log.info("Проверяю нет ли игроков с истекшим сроком привилегий.");
                 Set<String> playersSet = confPlayers.getKeys(false);
                 boolean flagReload = false;
-                Set<String> privilegesList;
+                Set<String> groupsList;
                 Date date_expires;
-                String privilegeName;
+                String groupName;
                 if (playersSet != null) {
 	                for (String playerSetEntry : playersSet) {
-	                    privilegesList = confPlayers.getConfigurationSection(playerSetEntry).getKeys(false);
-	                    if (privilegesList != null) for (String privilegeSetEntry : privilegesList) {
-		                	if (!(confPlayers.get(playerSetEntry+"."+privilegeSetEntry, "").equals(""))) {
-			                	date_expires = (Date) confPlayers.get(playerSetEntry+"."+privilegeSetEntry, 0);
+	                    groupsList = confPlayers.getConfigurationSection(playerSetEntry).getKeys(false);
+	                    if (groupsList != null) for (String groupSetEntry : groupsList) {
+		                	if (!(confPlayers.get(playerSetEntry+"."+groupSetEntry, "").equals(""))) {
+			                	date_expires = (Date) confPlayers.get(playerSetEntry+"."+groupSetEntry, 0);
 
 			                	Calendar calendar = new GregorianCalendar();
 			                	if (calendar.getTime().after(date_expires)) {
 			                		
-			                		privilegeName = privilegeSetEntry;
-			                		log.info("Снимаю права "+privilegeName+" c игрока "+playerSetEntry);
-			                		getServer().dispatchCommand(getServer().getConsoleSender(), "pex user "+playerSetEntry+" group remove "+privilegeName);
-			                		confPlayers.set(playerSetEntry+"."+privilegeSetEntry, "");
+			                		groupName = groupSetEntry;
+			                		log.info("Снимаю права "+groupName+" c игрока "+playerSetEntry);
+			                		
+			                		switch (confPlugin) {
+			                			case "pex":
+			                				getServer().dispatchCommand(getServer().getConsoleSender(), "pex user "+playerSetEntry+" group remove "+groupName);
+			                				break;
+			                			case "gm":
+			                				getServer().dispatchCommand(getServer().getConsoleSender(), "manuadd "+playerSetEntry+" "+confDefaultGroup);
+			                				break;
+			                			case "gm-sub":
+			                				getServer().dispatchCommand(getServer().getConsoleSender(), "manudelsub "+playerSetEntry+" "+groupName);
+			                				break;
+			                		}
+			                		
+			                		confPlayers.set(playerSetEntry+"."+groupSetEntry, "");
 			                		flagReload = true;
 			                	}
 		                	}
@@ -68,7 +103,7 @@ public class ExPrivileges extends JavaPlugin {
                 if (flagReload) {
                 	
                 	log.info("Было найдено и удалено несколько пользователей.");
-                	getServer().dispatchCommand(getServer().getConsoleSender(), "pex reload");
+                	if (confPlugin.equals("pex")) getServer().dispatchCommand(getServer().getConsoleSender(), "pex reload");
                 	try {
             			confPlayers.save(filePlayers);
             		} catch (IOException e) {
@@ -82,7 +117,7 @@ public class ExPrivileges extends JavaPlugin {
             		
                 }
             }
-        }, 0L, 864000L);
+        }, 0L, 1200L*confMinutes);
         
 		//PluginManager pm = this.getServer().getPluginManager();
 		
@@ -102,7 +137,7 @@ public class ExPrivileges extends JavaPlugin {
 			
 		}
 		
-		if(cmd.getName().equalsIgnoreCase("ep")){
+		if(cmd.getName().equalsIgnoreCase("tg")){
 			
 			if(args.length != 0) {
 				
@@ -117,21 +152,22 @@ public class ExPrivileges extends JavaPlugin {
 							} 
 							else {
 								
-								if (sender.hasPermission("exprivileges.add")) addPlayer(args[1], args[2], args[3], sender);
+								if (sender.hasPermission("tempgroups.add")) addPlayer(args[1], args[2], args[3], sender);
 									            
 							}
-						} else sender.sendMessage("/ep add [player] [privilege] [days]");
+						} else sender.sendMessage("/ep add [player] [group] [days]");
 						return true;
 					case "reload":
 					try {
 						confPlayers.load(filePlayers);
+						reloadCfg();
 					} catch (IOException | InvalidConfigurationException e) {
 						sender.sendMessage(this.prefix + "Ошибка при перезагрузке плагина.");
 						log.info(this.logPrefix + "Ошибка при перезагрузке плагина.");
 						return false;
 					}
-						sender.sendMessage(this.prefix + "Плагин перезагружен.");
-						log.info(this.logPrefix + "Плагин перезагружен.");
+						sender.sendMessage(this.prefix + "Плагин перезагружен. Используемый плагин прав: "+confPlugin);
+						log.info(this.logPrefix + "Плагин перезагружен. Используемый плагин прав: "+confPlugin);
 						return true;
 					case "version":
 						sender.sendMessage(this.prefix + "Версия плагина: "+this.version);
@@ -146,14 +182,14 @@ public class ExPrivileges extends JavaPlugin {
 							} 
 							else {
 								
-								if (sender.hasPermission("exprivileges.remove")) removePlayer(args[1], args[2], sender);
+								if (sender.hasPermission("tempgroups.remove")) removePlayer(args[1], args[2], sender);
 									            
 							}
-						} else sender.sendMessage("/ep remove [player] [privilege]");
+						} else sender.sendMessage("/ep remove [player] [group]");
 						return true;
 					case "help":
 						sender.sendMessage(this.prefix + "Доступные команды:");
-						sender.sendMessage("/ep add [player] [privilege] [days]" + " - добавить игроку привилегию на [days] дней");
+						sender.sendMessage("/ep add [player] [group] [days]" + " - добавить игроку привилегию на [days] дней");
 						sender.sendMessage("/ep remove [player]" + " - удалить игрока из списков плагина");
 						sender.sendMessage("/ep reload" + " - перезагрузить плагин");
 						sender.sendMessage("/ep version" + " - узнать версию плагина");
@@ -166,7 +202,7 @@ public class ExPrivileges extends JavaPlugin {
 		return false; 
 	}
 	
-	public int checkCommandAdd(String playerName, String privilegeName, String timeStr) {
+	public int checkCommandAdd(String playerName, String groupName, String timeStr) {
 		
 		int time = Integer.parseInt(timeStr);
 		
@@ -175,27 +211,31 @@ public class ExPrivileges extends JavaPlugin {
 		
 	}
 	
-	public void addPlayer(String playerName, String privilegeName, String timeStr, CommandSender sender) {
+	public void addPlayer(String playerName, String groupName, String timeStr, CommandSender sender) {
 
-		if (checkCommandAdd(playerName, privilegeName, timeStr) == 1) {
+		if (checkCommandAdd(playerName, groupName, timeStr) == 1) {
 			
-			sender.sendMessage(this.prefix + "Игрок " + playerName + " был добавлен в группу " + privilegeName + " на " +timeStr+ " дней!");
-			log.info(this.logPrefix + "Игрок " + playerName + " был добавлен в группу " + privilegeName + " на " +timeStr+ " дней!");
-            //int time = Integer.parseInt(timeStr);
-    		getServer().dispatchCommand(getServer().getConsoleSender(), "pex user "+playerName+" group add "+privilegeName);
+			sender.sendMessage(this.prefix + "Игрок " + playerName + " был добавлен в группу " + groupName + " на " +timeStr+ " дней!");
+			log.info(this.logPrefix + "Игрок " + playerName + " был добавлен в группу " + groupName + " на " +timeStr+ " дней!");
+
+    		switch (confPlugin) {
+    			case "pex":
+    				getServer().dispatchCommand(getServer().getConsoleSender(), "pex user "+playerName+" group add "+groupName);
+    				break;
+    			case "gm":
+    				getServer().dispatchCommand(getServer().getConsoleSender(), "manuadd "+playerName+" "+groupName);
+    				break;
+    			case "gm-sub":
+    				getServer().dispatchCommand(getServer().getConsoleSender(), "manuaddsub "+playerName+" "+groupName);
+    				break;
+    		}
     		
-    		//confPlayers.set(playerName+".time", timeStr);
-    		
-    		//Date date = calendar.getTime();
     		int time = Integer.parseInt(timeStr);
 
     		Calendar calendar = new GregorianCalendar();
     		calendar.add(Calendar.DAY_OF_YEAR, time);
     		Date date_expires = calendar.getTime();
-    		
-    		confPlayers.set(playerName+"."+privilegeName, date_expires);
-    		//confPlayers.set(playerName+".date", date);
-    		//confPlayers.set(playerName+".date_expires", date_expires);
+    		confPlayers.set(playerName+"."+groupName, date_expires);
     		
     		try {
     			confPlayers.save(filePlayers);
@@ -215,11 +255,11 @@ public class ExPrivileges extends JavaPlugin {
           }
 	}
 	
-	public void removePlayer(String playerName, String privilegeName, CommandSender sender) {
+	public void removePlayer(String playerName, String groupName, CommandSender sender) {
 
-			sender.sendMessage(this.prefix + "Дата снятия привилегии "+privilegeName+" c игрока " + playerName + " была удалена из списков плагина. Права сняты не были!");
-			log.info(this.logPrefix + "Дата снятия привилегии "+privilegeName+" c игрока " + playerName + " была удалена из списков плагина. Права сняты не были!");
-			confPlayers.set(playerName+"."+privilegeName, "");
+			sender.sendMessage(this.prefix + "Дата снятия привилегии "+groupName+" c игрока " + playerName + " была удалена из списков плагина. Права сняты не были!");
+			log.info(this.logPrefix + "Дата снятия привилегии "+groupName+" c игрока " + playerName + " была удалена из списков плагина. Права сняты не были!");
+			confPlayers.set(playerName+"."+groupName, "");
 			try {
     			confPlayers.save(filePlayers);
     		} catch (IOException e) {

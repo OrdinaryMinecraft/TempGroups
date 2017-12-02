@@ -1,11 +1,11 @@
-main: ru.flametaichou.ExPrivileges
-name: ExPrivileges
-version: 0.4
+main: ru.flametaichou.TempGroups
+name: TempGroups
+version: 0.5
 author: flametaichou
 description:
 
 commands:
    ep:
       description: Основная команда плагина
-      permission: exprivileges.*
-      usage: /ep add|remove|reload|version|help
+      permission: tempgroups.*
+      usage: /tg add|remove|reload|version|help
